@@ -1,7 +1,10 @@
 import React, { useState } from 'react'
-import styled, { StylisPlugin } from 'styled-components'
+import styled from 'styled-components'
+import produce from 'immer'
 import { Header as _Header } from './Header'
 import { Column } from './Column'
+import { DeleteDialog } from './DeleteDialog'
+import { Overlay as _Overlay } from './Overlay'
 
 export function App() {
   const [filterValue, setFilterValue] = useState('')
@@ -47,42 +50,54 @@ export function App() {
 
     if (fromID === toID) return
 
-    setColumns(columns => {
-      const card = columns.flatMap(col => col.cards).find(c => c.id === fromID)
-      if (!card) {
-        return columns
-      }
+    type Columns = typeof columns
+    setColumns(
+      produce((columns: Columns) => {
+        const card = columns
+          .flatMap(col => col.cards)
+          .find(c => c.id === fromID)
+        if (!card) return
 
-      return columns.map(column => {
-        let newColumn = column
+        const fromColumn = columns.find(col =>
+          col.cards.some(c => c.id === fromID),
+        )
+        if (!fromColumn) return
 
-        if (newColumn.cards.some(c => c.id === fromID)) {
-          newColumn = {
-            ...newColumn,
-            cards: newColumn.cards.filter(c => c.id !== fromID),
-          }
+        fromColumn.cards = fromColumn.cards.filter(c => c.id !== fromID)
+
+        const toColumn = columns.find(
+          col => col.id === toID || col.cards.some(c => c.id === toID),
+        )
+        if (!toColumn) return
+
+        let index = toColumn.cards.findIndex(c => c.id === toID)
+        if (index < 0) {
+          index = toColumn.cards.length
         }
+        toColumn.cards.splice(index, 0, card)
+      }),
+    )
+  }
 
-        // 列の末尾に移動
-        if (newColumn.id === toID) {
-          newColumn = {
-            ...newColumn,
-            cards: [...newColumn.cards, card],
-          }
-        }
-        // 列の末尾以外に移動
-        else if (newColumn.cards.some(c => c.id === toID)) {
-          newColumn = {
-            ...newColumn,
-            cards: newColumn.cards.flatMap(c =>
-              c.id === toID ? [card, c] : [c],
-            ),
-          }
-        }
+  const [deletingCardID, setDeletingCardID] = useState<string | undefined>(
+    undefined,
+  )
 
-        return newColumn
-      })
-    })
+  const deleteCard = () => {
+    const cardID = deletingCardID
+    if (!cardID) return
+
+    setDeletingCardID(undefined)
+
+    type Columns = typeof columns
+    setColumns(
+      produce((columns: Columns) => {
+        const column = columns.find(col => col.cards.some(c => c.id === cardID))
+        if (!column) return
+
+        column.cards = column.cards.filter(c => c.id !== cardID)
+      }),
+    )
   }
 
   return (
@@ -99,10 +114,20 @@ export function App() {
               cards={cards}
               onCardDragStart={cardID => setDraggingCardID(cardID)}
               onCardDrop={entered => dropCardTo(entered ?? columnID)}
+              onCardDeleteClick={cardID => setDeletingCardID(cardID)}
           />
         ))}
         </HorizontalScroll>
       </MainArea>
+
+      {deletingCardID && (
+        <Overlay onClick={() => setDeletingCardID(undefined)}>
+          <DeleteDialog
+            onConfirm={deleteCard}
+            onCancel={() => setDeletingCardID(undefined)}
+          />
+        </Overlay>
+      )}
     </Container>
   )
 }
@@ -139,4 +164,10 @@ const HorizontalScroll = styled.div`
     flex: 0 0 16px;
     content: '';
   }
+`
+
+const Overlay = styled(_Overlay)`
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `
