@@ -1,85 +1,221 @@
-export type ReqAndRes = {
-  'POST /v1/cards': {
-    req: {
-      id: string
-      text?: string
-    }
-    res: {
-      id: string
-      text?: string
-    }
+import React, { useState } from 'react'
+import styled from 'styled-components'
+import produce from 'immer'
+import { randomID } from './util'
+import { api } from './api'
+import { Header as _Header } from './Header'
+import { Column } from './Column'
+import { DeleteDialog } from './DeleteDialog'
+import { Overlay as _Overlay } from './Overlay'
+
+export function App() {
+  const [filterValue, setFilterValue] = useState('')
+  const [columns, setColumns] = useState([
+    {
+      id: 'A',
+      title: 'TODO',
+      text: '',
+      cards: [
+        { id: 'a', text: '朝食をとる🍞' },
+        { id: 'b', text: 'SNSをチェックする🐦' },
+        { id: 'c', text: '布団に入る (:3[___]' },
+      ],
+    },
+    {
+      id: 'B',
+      title: 'Doing',
+      text: '',
+      cards: [
+        { id: 'd', text: '顔を洗う👐' },
+        { id: 'e', text: '歯を磨く🦷' },
+      ],
+    },
+    {
+      id: 'C',
+      title: 'Waiting',
+      text: '',
+      cards: [],
+    },
+    {
+      id: 'D',
+      title: 'Done',
+      text: '',
+      cards: [{ id: 'f', text: '布団から出る (:3っ)っ -=三[＿＿]' }],
+    },
+  ])
+
+  const [draggingCardID, setDraggingCardID] = useState<string | undefined>(
+    undefined,
+  )
+
+  const dropCardTo = (toID: string) => {
+    const fromID = draggingCardID
+    if (!fromID) return
+
+    setDraggingCardID(undefined)
+
+    if (fromID === toID) return
+
+    type Columns = typeof columns
+    setColumns(
+      produce((columns: Columns) => {
+        const card = columns
+          .flatMap(col => col.cards)
+          .find(c => c.id === fromID)
+        if (!card) return
+
+        const fromColumn = columns.find(col =>
+          col.cards.some(c => c.id === fromID),
+        )
+        if (!fromColumn) return
+
+        fromColumn.cards = fromColumn.cards.filter(c => c.id !== fromID)
+
+        const toColumn = columns.find(
+          col => col.id === toID || col.cards.some(c => c.id === toID),
+        )
+        if (!toColumn) return
+
+        let index = toColumn.cards.findIndex(c => c.id === toID)
+        if (index < 0) {
+          index = toColumn.cards.length
+        }
+        toColumn.cards.splice(index, 0, card)
+      }),
+    )
   }
-}
 
-export const Endpoint = 'http://localhost:3000/api'
+   const setText = (columnID: string, value: string) => {
+     type Columns = typeof columns
+     setColumns(
+       produce((columns: Columns) => {
+         const column = columns.find(c => c.id === columnID)
+         if (!column) return
+ 
+         column.text = value
+       }),
+     )
+   }
 
-export async function api<K extends keyof ReqAndRes>(
-  key: K,
-  payload: ReqAndRes[K]['req'],
-  // async関数は、確かにデフォルトでPromiseを返すが
-  //TypeScriptでは、関数の戻り値の型を明示的に指定することで型安全性を向上させることができるので
-  //わざわざPromiseを明示的に書いている
-  //ReqAndRes[K]['res']では、レスポンスの型を指定している
-): Promise<ReqAndRes[K]['res']> {
-  const [method, path] = key.split(' ')
-  if (!method || !path) {
-    throw new Error(`Unrecognized api: ${key}`)
+   const addCard = (columnID: string) => {
+    const column = columns.find(c => c.id === columnID)
+    if (!column) return
+
+    const text = column.text
+    const cardID = randomID()
+
+    type Columns = typeof columns
+    setColumns(
+      produce((columns: Columns) => {
+        const column = columns.find(c => c.id === columnID)
+        if (!column) return
+
+        column.cards.unshift({
+          id: cardID,
+          text: column.text,
+        })
+        column.text = ''
+      }),
+    )
+
+    api('POST /v1/cards', {
+      id: cardID,
+      text,
+    })
   }
 
-  let pathWithID = ''
-  const option: RequestInit = { method }
-  switch (option.method) {
-    case 'GET':
-    case 'DELETE':
-      if (payload && 'id' in payload) {
-        pathWithID = `${path}/${payload.id}`
-      }
-      break
+  const [deletingCardID, setDeletingCardID] = useState<string | undefined>(
+    undefined,
+  )
 
-    case 'POST':
-      option.headers = { 'Content-Type': 'application/json' }
-      option.body = JSON.stringify(payload)
-      break
+  const deleteCard = () => {
+    const cardID = deletingCardID
+    if (!cardID) return
 
-    case 'PATCH':
-      if (payload && 'id' in payload) {
-        pathWithID = `${path}/${payload.id}`
-      }
-      option.headers = { 'Content-Type': 'application/json' }
-      option.body = JSON.stringify(payload)
-      break
+    setDeletingCardID(undefined)
+
+    type Columns = typeof columns
+    setColumns(
+      produce((columns: Columns) => {
+        const column = columns.find(col => col.cards.some(c => c.id === cardID))
+        if (!column) return
+
+        column.cards = column.cards.filter(c => c.id !== cardID)
+      }),
+    )
   }
 
-  return fetch(`${Endpoint}${pathWithID || path}`, option).then(res =>
-    res.ok
-      ? res.json()
-      : res.text().then(text => {
-          throw new APIError(
-            method,
-            res.url,
-            res.status,
-            res.statusText,
-            res.ok,
-            res.redirected,
-            res.type,
-            text,
-          )
-        }),
+  return (
+    <Container>
+      <Header filterValue={filterValue} onFilterChange={setFilterValue}/>
+
+      <MainArea>
+        <HorizontalScroll>
+        {columns.map(({ id: columnID, title, cards, text }) => (
+            <Column
+              key={columnID}
+              title={title}
+              filterValue={filterValue}
+              cards={cards}
+              onCardDragStart={cardID => setDraggingCardID(cardID)}
+              onCardDrop={entered => dropCardTo(entered ?? columnID)}
+              onCardDeleteClick={cardID => setDeletingCardID(cardID)}
+              text={text}
+              onTextChange={value => setText(columnID, value)}
+              onTextConfirm={() => addCard(columnID)}
+          />
+        ))}
+        </HorizontalScroll>
+      </MainArea>
+
+      {deletingCardID && (
+        <Overlay onClick={() => setDeletingCardID(undefined)}>
+          <DeleteDialog
+            onConfirm={deleteCard}
+            onCancel={() => setDeletingCardID(undefined)}
+          />
+        </Overlay>
+      )}
+    </Container>
   )
 }
 
-export class APIError extends Error {
-  constructor(
-    public method: string,
-    public url: string,
-    public status: number,
-    public statusText: string,
-    public ok: boolean,
-    public redirected: boolean,
-    public type: string,
-    public text?: string,
-  ) {
-    // Errorのコンストラクタ関数を呼び出して、インスタンス作成と同時にエラー内容をmessageプロパティに保存している。
-    super(`${method} ${url} ${status} (${statusText})`)
+const Container = styled.div`
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+`
+
+const Header = styled(_Header)`
+  flex-shrink: 0;
+`
+
+const MainArea = styled.div`
+  height: 100%;
+  padding: 16px 0;
+  overflow-y: auto;
+`
+
+const HorizontalScroll = styled.div`
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow-x: auto;
+
+  > * {
+    margin-left: 16px;
+    flex-shrink: 0;
   }
-}
+
+  ::after {
+    display: block;
+    flex: 0 0 16px;
+    content: '';
+  }
+`
+
+const Overlay = styled(_Overlay)`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+`
