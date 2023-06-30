@@ -19,7 +19,7 @@ export function Column({
 }: {
   title?: string
   filterValue?: string
-  cards: {
+  cards?: {
     id: string
     text?: string
   }[]
@@ -33,10 +33,10 @@ export function Column({
 }) {
   const filterValue = rawFilterValue?.trim()
   const keywords = filterValue?.toLowerCase().split(/\s+/g) ?? []
-  const cards = rawCards.filter(({ text }) =>
+  const cards = rawCards?.filter(({ text }) =>
     keywords?.every(w => text?.toLowerCase().includes(w)),
   )
-  const totalCount = rawCards.length
+  const totalCount = rawCards?.length ?? -1
 
   const [inputMode, setInputMode] = useState(false)
   const toggleInput = () => setInputMode(v => !v)
@@ -75,6 +75,10 @@ export function Column({
         />
       )}
 
+      {!cards ? (
+        <loading/>
+      ) : (
+        <>
       {filterValue && <ResultCount>{cards.length} results</ResultCount>}
 
       <VerticalScroll>
@@ -105,6 +109,8 @@ export function Column({
           onDrop={() => onCardDrop?.(null)}
         />
       </VerticalScroll>
+      </>
+      )}
     </Container>
   )
 }
@@ -160,6 +166,13 @@ const AddButton = styled.button.attrs({
 
 const InputForm = styled(_InputForm)`
   padding: 8px;
+`
+
+const Loading = styled.div.attrs({
+  children: 'Loading...',
+})`
+  padding: 8px;
+  font-size: 14px;
 `
 
 const ResultCount = styled.div`

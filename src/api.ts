@@ -1,4 +1,20 @@
 export type ReqAndRes = {
+  'GET /v1/columns': {
+    req: null
+    res: {
+      id: string
+      title?: string
+    }[]
+  }
+
+  'GET /v1/cards': {
+    req: null
+    res: {
+      id: string
+      text?: string
+    }[]
+  }
+
   'POST /v1/cards': {
     req: {
       id: string
@@ -11,7 +27,7 @@ export type ReqAndRes = {
   }
 }
 
-export const Endpoint = process.env.API_ENDPOINT || 'http://localhost:3000/api'
+export const Endpoint = 'http://localhost:3000/api'
 
 export async function api<K extends keyof ReqAndRes>(
   key: K,
