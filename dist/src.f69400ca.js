@@ -36372,6 +36372,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.randomID = randomID;
+exports.sortBy = sortBy;
 
 /**
  * ランダムな ID `[0-9A-Za-z_-]{12}` を作成する
@@ -36385,6 +36386,31 @@ function randomID() {
   }
 
   return id;
+}
+/**
+ * リストをリストの順序情報に従ってソートした新しいリストを返す
+ *
+ * @param list リスト
+ * @param order リストの順序情報
+ * @param head リストの先頭のキー
+ */
+
+
+function sortBy(list, order, head) {
+  var map = list.reduce(function (m, e) {
+    return m.set(e.id, e);
+  }, new Map());
+  var sorted = [];
+  var id = order[head];
+
+  for (var i = list.length; i > 0; i--) {
+    if (!id || id === head) break;
+    var e = map.get(id);
+    if (e) sorted.push(e);
+    id = order[id];
+  }
+
+  return sorted;
 }
 },{}],"api.ts":[function(require,module,exports) {
 "use strict";
@@ -37289,7 +37315,7 @@ var _DeleteDialog = require("./DeleteDialog");
 
 var _Overlay2 = require("./Overlay");
 
-var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5;
+var _templateObject, _templateObject2, _templateObject3, _templateObject4, _templateObject5, _templateObject6;
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -37325,10 +37351,12 @@ function App() {
       filterValue = _useState2[0],
       setFilterValue = _useState2[1];
 
-  var _useState3 = (0, _react.useState)([]),
+  var _useState3 = (0, _react.useState)({
+    cardsOrder: {}
+  }),
       _useState4 = _slicedToArray(_useState3, 2),
-      columns = _useState4[0],
-      setColumns = _useState4[1];
+      columns = _useState4[0].columns,
+      setData = _useState4[1];
 
   (0, _react.useEffect)(function () {
     ;
@@ -37336,7 +37364,8 @@ function App() {
     _asyncToGenerator(
     /*#__PURE__*/
     _regeneratorRuntime().mark(function _callee() {
-      var columns, unorderedCards;
+      var columns, _ref2, _ref3, unorderedCards, cardsOrder;
+
       return _regeneratorRuntime().wrap(function _callee$(_context) {
         while (1) switch (_context.prev = _context.next) {
           case 0:
@@ -37345,19 +37374,28 @@ function App() {
 
           case 2:
             columns = _context.sent;
-            setColumns(columns);
+            setData((0, _immer.default)(function (draft) {
+              draft.columns = columns;
+            }));
             _context.next = 6;
-            return (0, _api.api)('GET /v1/cards', null);
+            return Promise.all([(0, _api.api)('GET /v1/cards', null), (0, _api.api)('GET /v1/cardsOrder', null)]);
 
           case 6:
-            unorderedCards = _context.sent;
-            setColumns((0, _immer.default)(function (columns) {
-              columns.forEach(function (column) {
-                column.cards = unorderedCards;
+            _ref2 = _context.sent;
+            _ref3 = _slicedToArray(_ref2, 2);
+            unorderedCards = _ref3[0];
+            cardsOrder = _ref3[1];
+            setData((0, _immer.default)(function (draft) {
+              var _a;
+
+              draft.cardsOrder = cardsOrder;
+              (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.forEach(function (column) {
+                // 第三引数にcolumn.idを指定することで、特定の列に適用されるカードの順序を制御し、正しい並び替えを行うことができる。
+                column.cards = (0, _util.sortBy)(unorderedCards, cardsOrder, column.id);
               });
             }));
 
-          case 8:
+          case 11:
           case "end":
             return _context.stop();
         }
@@ -37375,8 +37413,10 @@ function App() {
     if (!fromID) return;
     setDraggingCardID(undefined);
     if (fromID === toID) return;
-    setColumns((0, _immer.default)(function (columns) {
-      var card = columns.flatMap(function (col) {
+    setData((0, _immer.default)(function (draft) {
+      var _a, _b, _c;
+
+      var card = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.flatMap(function (col) {
         var _a;
 
         return (_a = col.cards) !== null && _a !== void 0 ? _a : [];
@@ -37384,7 +37424,7 @@ function App() {
         return c.id === fromID;
       });
       if (!card) return;
-      var fromColumn = columns.find(function (col) {
+      var fromColumn = (_b = draft.columns) === null || _b === void 0 ? void 0 : _b.find(function (col) {
         var _a;
 
         return (_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(function (c) {
@@ -37395,7 +37435,7 @@ function App() {
       fromColumn.cards = fromColumn.cards.filter(function (c) {
         return c.id !== fromID;
       });
-      var toColumn = columns.find(function (col) {
+      var toColumn = (_c = draft.columns) === null || _c === void 0 ? void 0 : _c.find(function (col) {
         var _a;
 
         return col.id === toID || ((_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(function (c) {
@@ -37416,8 +37456,10 @@ function App() {
   };
 
   var setText = function setText(columnID, value) {
-    setColumns((0, _immer.default)(function (columns) {
-      var column = columns.find(function (c) {
+    setData((0, _immer.default)(function (draft) {
+      var _a;
+
+      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
         return c.id === columnID;
       });
       if (!column) return;
@@ -37426,20 +37468,20 @@ function App() {
   };
 
   var addCard = function addCard(columnID) {
-    var column = columns.find(function (c) {
+    var column = columns === null || columns === void 0 ? void 0 : columns.find(function (c) {
       return c.id === columnID;
     });
     if (!column) return;
     var text = column.text;
     var cardID = (0, _util.randomID)();
-    setColumns((0, _immer.default)(function (columns) {
-      var _a;
+    setData((0, _immer.default)(function (draft) {
+      var _a, _b;
 
-      var column = columns.find(function (c) {
+      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
         return c.id === columnID;
       });
       if (!column) return;
-      (_a = column.cards) === null || _a === void 0 ? void 0 : _a.unshift({
+      (_b = column.cards) === null || _b === void 0 ? void 0 : _b.unshift({
         id: cardID,
         text: column.text
       });
@@ -37460,10 +37502,10 @@ function App() {
     var cardID = deletingCardID;
     if (!cardID) return;
     setDeletingCardID(undefined);
-    setColumns((0, _immer.default)(function (columns) {
-      var _a;
+    setData((0, _immer.default)(function (draft) {
+      var _a, _b;
 
-      var column = columns.find(function (col) {
+      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (col) {
         var _a;
 
         return (_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(function (c) {
@@ -37471,7 +37513,7 @@ function App() {
         });
       });
       if (!column) return;
-      column.cards = (_a = column.cards) === null || _a === void 0 ? void 0 : _a.filter(function (c) {
+      column.cards = (_b = column.cards) === null || _b === void 0 ? void 0 : _b.filter(function (c) {
         return c.id !== cardID;
       });
     }));
@@ -37480,11 +37522,11 @@ function App() {
   return _react.default.createElement(Container, null, _react.default.createElement(Header, {
     filterValue: filterValue,
     onFilterChange: setFilterValue
-  }), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, columns.map(function (_ref2) {
-    var columnID = _ref2.id,
-        title = _ref2.title,
-        cards = _ref2.cards,
-        text = _ref2.text;
+  }), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, !columns ? _react.default.createElement(Loading, null) : columns.map(function (_ref4) {
+    var columnID = _ref4.id,
+        title = _ref4.title,
+        cards = _ref4.cards,
+        text = _ref4.text;
     return _react.default.createElement(_Column.Column, {
       key: columnID,
       title: title,
@@ -37527,7 +37569,11 @@ var MainArea = _styledComponents.default.div(_templateObject3 || (_templateObjec
 
 var HorizontalScroll = _styledComponents.default.div(_templateObject4 || (_templateObject4 = _taggedTemplateLiteral(["\n  display: flex;\n  width: 100%;\n  height: 100%;\n  overflow-x: auto;\n\n  > * {\n    margin-left: 16px;\n    flex-shrink: 0;\n  }\n\n  ::after {\n    display: block;\n    flex: 0 0 16px;\n    content: '';\n  }\n"])));
 
-var Overlay = (0, _styledComponents.default)(_Overlay2.Overlay)(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n"])));
+var Loading = _styledComponents.default.div.attrs({
+  children: 'Loading...'
+})(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral(["\n  font-size: 14px;\n"])));
+
+var Overlay = (0, _styledComponents.default)(_Overlay2.Overlay)(_templateObject6 || (_templateObject6 = _taggedTemplateLiteral(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n"])));
 },{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","immer":"../node_modules/immer/dist/immer.esm.js","./util":"util.ts","./api":"api.ts","./Header":"Header.tsx","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
 "use strict";
 

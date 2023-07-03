@@ -25,6 +25,11 @@ export type ReqAndRes = {
       text?: string
     }
   }
+
+  'GET /v1/cardsOrder': {
+    req: null
+    res: Record<string, string>
+  }
 }
 
 export const Endpoint = 'http://localhost:3000/api'
