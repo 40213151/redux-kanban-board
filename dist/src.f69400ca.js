@@ -37607,6 +37607,128 @@ exports.produce = rn;
 exports.Immer = nn;
 var _default = rn;
 exports.default = _default;
+},{}],"util.ts":[function(require,module,exports) {
+"use strict";
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.randomID = randomID;
+exports.reorderPatch = reorderPatch;
+exports.sortBy = sortBy;
+
+function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
+
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+
+function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
+
+function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
+
+function _iterableToArrayLimit(arr, i) { var _i = null == arr ? null : "undefined" != typeof Symbol && arr[Symbol.iterator] || arr["@@iterator"]; if (null != _i) { var _s, _e, _x, _r, _arr = [], _n = !0, _d = !1; try { if (_x = (_i = _i.call(arr)).next, 0 === i) { if (Object(_i) !== _i) return; _n = !1; } else for (; !(_n = (_s = _x.call(_i)).done) && (_arr.push(_s.value), _arr.length !== i); _n = !0); } catch (err) { _d = !0, _e = err; } finally { try { if (!_n && null != _i.return && (_r = _i.return(), Object(_r) !== _r)) return; } finally { if (_d) throw _e; } } return _arr; } }
+
+function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+/**
+ * ランダムな ID `[0-9A-Za-z_-]{12}` を作成する
+ */
+function randomID() {
+  var alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-';
+  var id = '';
+
+  for (var i = 12; i > 0; i--) {
+    id += alphabet[Math.random() * 64 | 0];
+  }
+
+  return id;
+}
+/**
+ * リストを,あらかじめ決まっている順序に従ってソートした新しいリストを返す
+ *
+ * @param list カードリスト
+ * @param order リストの順序情報
+ * @param head カラムのID
+ */
+
+
+function sortBy(list, order, head) {
+  // map: キーがid,valueがカードの各要素で構成されたマップオブジェクトの配列を生成している。
+  var map = list.reduce(function (m, e) {
+    return m.set(e.id, e);
+  }, new Map()); //  console.log('map' ,map)
+
+  var sorted = [];
+  var id = order[head]; //  console.log('head' ,head)
+  //  console.log('order[head]' ,order[head])
+  // iの初期値はlistの長さで、iが0より大きい限りはループを実行して、iはだんだん1ずつ少なくなる。逆ループ。
+
+  for (var i = list.length; i > 0; i--) {
+    if (!id || id === head) break;
+    var e = map.get(id);
+    if (e) sorted.push(e);
+    id = order[id];
+  }
+
+  return sorted;
+}
+/**
+* リストの順序情報を並べ替える PATCH リクエストのための情報を生成する
+*
+* @param order 変更前のリストの順序情報
+* @param id 移動対象の ID
+* @param toID 移動先の ID
+*/
+
+
+function reorderPatch(order, id) {
+  var toID = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
+  var patch = {};
+
+  if (id === toID || order[id] === toID) {
+    return patch;
+  } // console.log('order', order)
+  // console.log('Object.entries(order)', Object.entries(order))
+  // console.log('id', id)
+  // console.log('toID', toID)
+  // 2番目が真であり、かつ id と等しい要素をorderから探している。
+
+
+  var _ref = Object.entries(order).find(function (_ref3) {
+    var _ref4 = _slicedToArray(_ref3, 2),
+        v = _ref4[1];
+
+    return v && v === id;
+  }) || [],
+      _ref2 = _slicedToArray(_ref, 1),
+      deleteKey = _ref2[0];
+
+  if (deleteKey) {
+    patch[deleteKey] = order[id];
+  } // console.log('[deleteKey]', [deleteKey])
+  // console.log('patch[deleteKey]', patch[deleteKey])
+  // 2番目が真であり、かつ id と等しい要素をorderから探している。
+
+
+  var _ref5 = Object.entries(order).find(function (_ref7) {
+    var _ref8 = _slicedToArray(_ref7, 2),
+        v = _ref8[1];
+
+    return v && v === toID;
+  }) || [],
+      _ref6 = _slicedToArray(_ref5, 1),
+      insertKey = _ref6[0];
+
+  if (insertKey) {
+    patch[insertKey] = id;
+  } // console.log('[insertKey]', [insertKey])
+  // console.log('patch[insertKey]', patch[insertKey])
+
+
+  patch[id] = toID;
+  console.log('toID', toID);
+  console.log('patch', patch);
+  return patch;
+}
 },{}],"reducer.ts":[function(require,module,exports) {
 "use strict";
 
@@ -37617,12 +37739,29 @@ exports.reducer = void 0;
 
 var _immer = _interopRequireDefault(require("immer"));
 
+var _util = require("./util");
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
+function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (obj) { return typeof obj; } : function (obj) { return obj && "function" == typeof Symbol && obj.constructor === Symbol && obj !== Symbol.prototype ? "symbol" : typeof obj; }, _typeof(obj); }
+
+function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
+
+function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = null != arguments[i] ? arguments[i] : {}; i % 2 ? ownKeys(Object(source), !0).forEach(function (key) { _defineProperty(target, key, source[key]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } return target; }
+
+function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
+
+function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
+
 var initialState = {
-  filterValue: ''
+  filterValue: '',
+  cardsOrder: {}
 };
 var reducer = (0, _immer.default)(function (draft, action) {
+  var _a, _b, _c, _d, _e, _f, _g;
+
   switch (action.type) {
     case 'Filter.SetFilter':
       {
@@ -37630,10 +37769,136 @@ var reducer = (0, _immer.default)(function (draft, action) {
         draft.filterValue = value;
         return;
       }
+
+    case 'App.SetColumns':
+      {
+        var columns = action.payload.columns;
+        draft.columns = columns;
+        return;
+      }
+
+    case 'App.SetCards':
+      {
+        var _action$payload2 = action.payload,
+            unorderedCards = _action$payload2.cards,
+            cardsOrder = _action$payload2.cardsOrder;
+        draft.cardsOrder = cardsOrder;
+        (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.forEach(function (column) {
+          column.cards = (0, _util.sortBy)(unorderedCards, cardsOrder, column.id);
+        });
+        return;
+      }
+
+    case 'Card.SetDeletingCard':
+      {
+        var cardID = action.payload.cardID;
+        draft.deletingCardID = cardID;
+        return;
+      }
+
+    case 'Dialog.ConfirmDelete':
+      {
+        var _cardID = draft.deletingCardID;
+        if (!_cardID) return;
+        draft.deletingCardID = undefined;
+        var column = (_b = draft.columns) === null || _b === void 0 ? void 0 : _b.find(function (col) {
+          var _a;
+
+          return (_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(function (c) {
+            return c.id !== _cardID;
+          });
+        });
+        if (!(column === null || column === void 0 ? void 0 : column.cards)) return;
+        var patch = (0, _util.reorderPatch)(draft.cardsOrder, _cardID);
+        draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), patch);
+        return;
+      }
+
+    case 'Dialog.CancelDelete':
+      {
+        draft.deletingCardID = undefined;
+        return;
+      }
+
+    case 'Card.StartDragging':
+      {
+        var _cardID2 = action.payload.cardID;
+        draft.draggingCardID = _cardID2;
+        return;
+      }
+
+    case 'Card.Drop':
+      {
+        var fromID = draft.draggingCardID;
+        if (!fromID) return;
+        draft.draggingCardID = undefined;
+        var toID = action.payload.toID;
+        if (fromID === toID) return;
+
+        var _patch = (0, _util.reorderPatch)(draft.cardsOrder, fromID, toID);
+
+        draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), _patch);
+
+        var _unorderedCards = (_d = (_c = draft.columns) === null || _c === void 0 ? void 0 : _c.flatMap(function (c) {
+          var _a;
+
+          return (_a = c.cards) !== null && _a !== void 0 ? _a : [];
+        })) !== null && _d !== void 0 ? _d : [];
+
+        (_e = draft.columns) === null || _e === void 0 ? void 0 : _e.forEach(function (column) {
+          column.cards = (0, _util.sortBy)(_unorderedCards, draft.cardsOrder, column.id);
+        });
+        return;
+      }
+
+    case 'InputForm.SetText':
+      {
+        var _action$payload4 = action.payload,
+            columnID = _action$payload4.columnID,
+            _value = _action$payload4.value;
+
+        var _column = (_f = draft.columns) === null || _f === void 0 ? void 0 : _f.find(function (c) {
+          return c.id === columnID;
+        });
+
+        if (!_column) return;
+        _column.text = _value;
+        return;
+      }
+
+    case 'InputForm.ConfirmInput':
+      {
+        var _action$payload6 = action.payload,
+            _columnID = _action$payload6.columnID,
+            _cardID3 = _action$payload6.cardID;
+
+        var _column2 = (_g = draft.columns) === null || _g === void 0 ? void 0 : _g.find(function (c) {
+          return c.id === _columnID;
+        });
+
+        if (!(_column2 === null || _column2 === void 0 ? void 0 : _column2.cards)) return;
+
+        _column2.cards.unshift({
+          id: _cardID3,
+          text: _column2.text
+        });
+
+        _column2.text = '';
+
+        var _patch2 = (0, _util.reorderPatch)(draft.cardsOrder, _cardID3, draft.cardsOrder[_columnID]);
+
+        draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), _patch2);
+        return;
+      }
+
+    default:
+      {
+        var _ = action;
+      }
   }
 }, initialState);
 exports.reducer = reducer;
-},{"immer":"../node_modules/immer/dist/immer.esm.js"}],"../node_modules/shallowequal/index.js":[function(require,module,exports) {
+},{"immer":"../node_modules/immer/dist/immer.esm.js","./util":"util.ts"}],"../node_modules/shallowequal/index.js":[function(require,module,exports) {
 //
 
 module.exports = function shallowEqual(objA, objB, compare, compareContext) {
@@ -39591,115 +39856,7 @@ function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(
 
 var GlobalStyle = (0, _styledComponents.createGlobalStyle)(_templateObject || (_templateObject = _taggedTemplateLiteral(["\n  html, body, #app {\n    height: 100%;\n  }\n\n  body {\n    /* https://css-tricks.com/snippets/css/system-font-stack/ */\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,\n      Oxygen-Sans, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif;\n\n    overflow-wrap: break-word;\n  }\n"])));
 exports.GlobalStyle = GlobalStyle;
-},{"styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js"}],"util.ts":[function(require,module,exports) {
-"use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.randomID = randomID;
-exports.reorderPatch = reorderPatch;
-exports.sortBy = sortBy;
-
-function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
-
-function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
-
-function _unsupportedIterableToArray(o, minLen) { if (!o) return; if (typeof o === "string") return _arrayLikeToArray(o, minLen); var n = Object.prototype.toString.call(o).slice(8, -1); if (n === "Object" && o.constructor) n = o.constructor.name; if (n === "Map" || n === "Set") return Array.from(o); if (n === "Arguments" || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(n)) return _arrayLikeToArray(o, minLen); }
-
-function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len = arr.length; for (var i = 0, arr2 = new Array(len); i < len; i++) arr2[i] = arr[i]; return arr2; }
-
-function _iterableToArrayLimit(arr, i) { var _i = null == arr ? null : "undefined" != typeof Symbol && arr[Symbol.iterator] || arr["@@iterator"]; if (null != _i) { var _s, _e, _x, _r, _arr = [], _n = !0, _d = !1; try { if (_x = (_i = _i.call(arr)).next, 0 === i) { if (Object(_i) !== _i) return; _n = !1; } else for (; !(_n = (_s = _x.call(_i)).done) && (_arr.push(_s.value), _arr.length !== i); _n = !0); } catch (err) { _d = !0, _e = err; } finally { try { if (!_n && null != _i.return && (_r = _i.return(), Object(_r) !== _r)) return; } finally { if (_d) throw _e; } } return _arr; } }
-
-function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
-
-/**
- * ランダムな ID `[0-9A-Za-z_-]{12}` を作成する
- */
-function randomID() {
-  var alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz-';
-  var id = '';
-
-  for (var i = 12; i > 0; i--) {
-    id += alphabet[Math.random() * 64 | 0];
-  }
-
-  return id;
-}
-/**
- * リストをリストの順序情報に従ってソートした新しいリストを返す
- *
- * @param list リスト
- * @param order リストの順序情報
- * @param head リストの先頭のキー
- */
-
-
-function sortBy(list, order, head) {
-  // reduce関数は配列の要素を左から右へと処理し、その結果を単一の出力値にまとめる高階関数のこと。
-  // 第二引数で初期値を受け取る。
-  var map = list.reduce(function (m, e) {
-    return m.set(e.id, e);
-  }, new Map());
-  var sorted = [];
-  var id = order[head];
-
-  for (var i = list.length; i > 0; i--) {
-    if (!id || id === head) break;
-    var e = map.get(id);
-    if (e) sorted.push(e);
-    id = order[id];
-  }
-
-  return sorted;
-}
-/**
-* リストの順序情報を並べ替える PATCH リクエストのための情報を生成する
-*
-* @param order リストの順序情報
-* @param id 移動対象の ID
-* @param toID 移動先の ID
-*/
-
-
-function reorderPatch(order, id) {
-  var toID = arguments.length > 2 && arguments[2] !== undefined ? arguments[2] : null;
-  var patch = {};
-
-  if (id === toID || order[id] === toID) {
-    return patch;
-  }
-
-  var _ref = Object.entries(order).find(function (_ref3) {
-    var _ref4 = _slicedToArray(_ref3, 2),
-        v = _ref4[1];
-
-    return v && v === id;
-  }) || [],
-      _ref2 = _slicedToArray(_ref, 1),
-      deleteKey = _ref2[0];
-
-  if (deleteKey) {
-    patch[deleteKey] = order[id];
-  }
-
-  var _ref5 = Object.entries(order).find(function (_ref7) {
-    var _ref8 = _slicedToArray(_ref7, 2),
-        v = _ref8[1];
-
-    return v && v === toID;
-  }) || [],
-      _ref6 = _slicedToArray(_ref5, 1),
-      insertKey = _ref6[0];
-
-  if (insertKey) {
-    patch[insertKey] = id;
-  }
-
-  patch[id] = toID;
-  return patch;
-}
-},{}],"api.ts":[function(require,module,exports) {
+},{"styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js"}],"api.ts":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40504,6 +40661,12 @@ var _react = _interopRequireDefault(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
 
+var _reactRedux = require("react-redux");
+
+var _util = require("./util");
+
+var _api = require("./api");
+
 var color = _interopRequireWildcard(require("./color"));
 
 var _Button = require("./Button");
@@ -40519,9 +40682,34 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 function DeleteDialog(_ref) {
-  var onConfirm = _ref.onConfirm,
-      onCancel = _ref.onCancel,
-      className = _ref.className;
+  var className = _ref.className;
+  var dispatch = (0, _reactRedux.useDispatch)();
+  var deletingCardID = (0, _reactRedux.useSelector)(function (state) {
+    return state.deletingCardID;
+  });
+  var cardsOrder = (0, _reactRedux.useSelector)(function (state) {
+    return state.cardsOrder;
+  });
+
+  var onConfirm = function onConfirm() {
+    var cardID = deletingCardID;
+    if (!cardID) return;
+    dispatch({
+      type: 'Dialog.ConfirmDelete'
+    });
+    (0, _api.api)('DELETE /v1/cards', {
+      id: cardID
+    });
+    var patch = (0, _util.reorderPatch)(cardsOrder, cardID);
+    (0, _api.api)('PATCH /v1/cardsOrder', patch);
+  };
+
+  var onCancel = function onCancel() {
+    return dispatch({
+      type: 'Dialog.CancelDelete'
+    });
+  };
+
   return _react.default.createElement(Container, {
     className: className
   }, _react.default.createElement(Message, null, "Are you sure to delete?"), _react.default.createElement(ButtonRow, null, _react.default.createElement(DeleteButton, {
@@ -40544,7 +40732,7 @@ var DeleteButton = (0, _styledComponents.default)(_Button.DangerButton).attrs({
 var CancelButton = (0, _styledComponents.default)(_Button.Button).attrs({
   children: 'Cancel'
 })(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral([""])));
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.ts","./Button":"Button.tsx"}],"Overlay.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./util":"util.ts","./api":"api.ts","./color":"color.ts","./Button":"Button.tsx"}],"Overlay.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40590,8 +40778,6 @@ var _styledComponents = _interopRequireDefault(require("styled-components"));
 
 var _reactRedux = require("react-redux");
 
-var _immer = _interopRequireDefault(require("immer"));
-
 var _util = require("./util");
 
 var _api = require("./api");
@@ -40616,21 +40802,7 @@ function _typeof(obj) { "@babel/helpers - typeof"; return _typeof = "function" =
 
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
-function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (Object.getOwnPropertySymbols) { var symbols = Object.getOwnPropertySymbols(object); enumerableOnly && (symbols = symbols.filter(function (sym) { return Object.getOwnPropertyDescriptor(object, sym).enumerable; })), keys.push.apply(keys, symbols); } return keys; }
-
-function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = null != arguments[i] ? arguments[i] : {}; i % 2 ? ownKeys(Object(source), !0).forEach(function (key) { _defineProperty(target, key, source[key]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } return target; }
-
-function _defineProperty(obj, key, value) { key = _toPropertyKey(key); if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _toPropertyKey(arg) { var key = _toPrimitive(arg, "string"); return _typeof(key) === "symbol" ? key : String(key); }
-
-function _toPrimitive(input, hint) { if (_typeof(input) !== "object" || input === null) return input; var prim = input[Symbol.toPrimitive]; if (prim !== undefined) { var res = prim.call(input, hint || "default"); if (_typeof(res) !== "object") return res; throw new TypeError("@@toPrimitive must return a primitive value."); } return (hint === "string" ? String : Number)(input); }
-
 function _regeneratorRuntime() { "use strict"; /*! regenerator-runtime -- Copyright (c) 2014-present, Facebook, Inc. -- license (MIT): https://github.com/facebook/regenerator/blob/main/LICENSE */ _regeneratorRuntime = function _regeneratorRuntime() { return exports; }; var exports = {}, Op = Object.prototype, hasOwn = Op.hasOwnProperty, defineProperty = Object.defineProperty || function (obj, key, desc) { obj[key] = desc.value; }, $Symbol = "function" == typeof Symbol ? Symbol : {}, iteratorSymbol = $Symbol.iterator || "@@iterator", asyncIteratorSymbol = $Symbol.asyncIterator || "@@asyncIterator", toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag"; function define(obj, key, value) { return Object.defineProperty(obj, key, { value: value, enumerable: !0, configurable: !0, writable: !0 }), obj[key]; } try { define({}, ""); } catch (err) { define = function define(obj, key, value) { return obj[key] = value; }; } function wrap(innerFn, outerFn, self, tryLocsList) { var protoGenerator = outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator, generator = Object.create(protoGenerator.prototype), context = new Context(tryLocsList || []); return defineProperty(generator, "_invoke", { value: makeInvokeMethod(innerFn, self, context) }), generator; } function tryCatch(fn, obj, arg) { try { return { type: "normal", arg: fn.call(obj, arg) }; } catch (err) { return { type: "throw", arg: err }; } } exports.wrap = wrap; var ContinueSentinel = {}; function Generator() {} function GeneratorFunction() {} function GeneratorFunctionPrototype() {} var IteratorPrototype = {}; define(IteratorPrototype, iteratorSymbol, function () { return this; }); var getProto = Object.getPrototypeOf, NativeIteratorPrototype = getProto && getProto(getProto(values([]))); NativeIteratorPrototype && NativeIteratorPrototype !== Op && hasOwn.call(NativeIteratorPrototype, iteratorSymbol) && (IteratorPrototype = NativeIteratorPrototype); var Gp = GeneratorFunctionPrototype.prototype = Generator.prototype = Object.create(IteratorPrototype); function defineIteratorMethods(prototype) { ["next", "throw", "return"].forEach(function (method) { define(prototype, method, function (arg) { return this._invoke(method, arg); }); }); } function AsyncIterator(generator, PromiseImpl) { function invoke(method, arg, resolve, reject) { var record = tryCatch(generator[method], generator, arg); if ("throw" !== record.type) { var result = record.arg, value = result.value; return value && "object" == _typeof(value) && hasOwn.call(value, "__await") ? PromiseImpl.resolve(value.__await).then(function (value) { invoke("next", value, resolve, reject); }, function (err) { invoke("throw", err, resolve, reject); }) : PromiseImpl.resolve(value).then(function (unwrapped) { result.value = unwrapped, resolve(result); }, function (error) { return invoke("throw", error, resolve, reject); }); } reject(record.arg); } var previousPromise; defineProperty(this, "_invoke", { value: function value(method, arg) { function callInvokeWithMethodAndArg() { return new PromiseImpl(function (resolve, reject) { invoke(method, arg, resolve, reject); }); } return previousPromise = previousPromise ? previousPromise.then(callInvokeWithMethodAndArg, callInvokeWithMethodAndArg) : callInvokeWithMethodAndArg(); } }); } function makeInvokeMethod(innerFn, self, context) { var state = "suspendedStart"; return function (method, arg) { if ("executing" === state) throw new Error("Generator is already running"); if ("completed" === state) { if ("throw" === method) throw arg; return doneResult(); } for (context.method = method, context.arg = arg;;) { var delegate = context.delegate; if (delegate) { var delegateResult = maybeInvokeDelegate(delegate, context); if (delegateResult) { if (delegateResult === ContinueSentinel) continue; return delegateResult; } } if ("next" === context.method) context.sent = context._sent = context.arg;else if ("throw" === context.method) { if ("suspendedStart" === state) throw state = "completed", context.arg; context.dispatchException(context.arg); } else "return" === context.method && context.abrupt("return", context.arg); state = "executing"; var record = tryCatch(innerFn, self, context); if ("normal" === record.type) { if (state = context.done ? "completed" : "suspendedYield", record.arg === ContinueSentinel) continue; return { value: record.arg, done: context.done }; } "throw" === record.type && (state = "completed", context.method = "throw", context.arg = record.arg); } }; } function maybeInvokeDelegate(delegate, context) { var methodName = context.method, method = delegate.iterator[methodName]; if (undefined === method) return context.delegate = null, "throw" === methodName && delegate.iterator.return && (context.method = "return", context.arg = undefined, maybeInvokeDelegate(delegate, context), "throw" === context.method) || "return" !== methodName && (context.method = "throw", context.arg = new TypeError("The iterator does not provide a '" + methodName + "' method")), ContinueSentinel; var record = tryCatch(method, delegate.iterator, context.arg); if ("throw" === record.type) return context.method = "throw", context.arg = record.arg, context.delegate = null, ContinueSentinel; var info = record.arg; return info ? info.done ? (context[delegate.resultName] = info.value, context.next = delegate.nextLoc, "return" !== context.method && (context.method = "next", context.arg = undefined), context.delegate = null, ContinueSentinel) : info : (context.method = "throw", context.arg = new TypeError("iterator result is not an object"), context.delegate = null, ContinueSentinel); } function pushTryEntry(locs) { var entry = { tryLoc: locs[0] }; 1 in locs && (entry.catchLoc = locs[1]), 2 in locs && (entry.finallyLoc = locs[2], entry.afterLoc = locs[3]), this.tryEntries.push(entry); } function resetTryEntry(entry) { var record = entry.completion || {}; record.type = "normal", delete record.arg, entry.completion = record; } function Context(tryLocsList) { this.tryEntries = [{ tryLoc: "root" }], tryLocsList.forEach(pushTryEntry, this), this.reset(!0); } function values(iterable) { if (iterable) { var iteratorMethod = iterable[iteratorSymbol]; if (iteratorMethod) return iteratorMethod.call(iterable); if ("function" == typeof iterable.next) return iterable; if (!isNaN(iterable.length)) { var i = -1, next = function next() { for (; ++i < iterable.length;) if (hasOwn.call(iterable, i)) return next.value = iterable[i], next.done = !1, next; return next.value = undefined, next.done = !0, next; }; return next.next = next; } } return { next: doneResult }; } function doneResult() { return { value: undefined, done: !0 }; } return GeneratorFunction.prototype = GeneratorFunctionPrototype, defineProperty(Gp, "constructor", { value: GeneratorFunctionPrototype, configurable: !0 }), defineProperty(GeneratorFunctionPrototype, "constructor", { value: GeneratorFunction, configurable: !0 }), GeneratorFunction.displayName = define(GeneratorFunctionPrototype, toStringTagSymbol, "GeneratorFunction"), exports.isGeneratorFunction = function (genFun) { var ctor = "function" == typeof genFun && genFun.constructor; return !!ctor && (ctor === GeneratorFunction || "GeneratorFunction" === (ctor.displayName || ctor.name)); }, exports.mark = function (genFun) { return Object.setPrototypeOf ? Object.setPrototypeOf(genFun, GeneratorFunctionPrototype) : (genFun.__proto__ = GeneratorFunctionPrototype, define(genFun, toStringTagSymbol, "GeneratorFunction")), genFun.prototype = Object.create(Gp), genFun; }, exports.awrap = function (arg) { return { __await: arg }; }, defineIteratorMethods(AsyncIterator.prototype), define(AsyncIterator.prototype, asyncIteratorSymbol, function () { return this; }), exports.AsyncIterator = AsyncIterator, exports.async = function (innerFn, outerFn, self, tryLocsList, PromiseImpl) { void 0 === PromiseImpl && (PromiseImpl = Promise); var iter = new AsyncIterator(wrap(innerFn, outerFn, self, tryLocsList), PromiseImpl); return exports.isGeneratorFunction(outerFn) ? iter : iter.next().then(function (result) { return result.done ? result.value : iter.next(); }); }, defineIteratorMethods(Gp), define(Gp, toStringTagSymbol, "Generator"), define(Gp, iteratorSymbol, function () { return this; }), define(Gp, "toString", function () { return "[object Generator]"; }), exports.keys = function (val) { var object = Object(val), keys = []; for (var key in object) keys.push(key); return keys.reverse(), function next() { for (; keys.length;) { var key = keys.pop(); if (key in object) return next.value = key, next.done = !1, next; } return next.done = !0, next; }; }, exports.values = values, Context.prototype = { constructor: Context, reset: function reset(skipTempReset) { if (this.prev = 0, this.next = 0, this.sent = this._sent = undefined, this.done = !1, this.delegate = null, this.method = "next", this.arg = undefined, this.tryEntries.forEach(resetTryEntry), !skipTempReset) for (var name in this) "t" === name.charAt(0) && hasOwn.call(this, name) && !isNaN(+name.slice(1)) && (this[name] = undefined); }, stop: function stop() { this.done = !0; var rootRecord = this.tryEntries[0].completion; if ("throw" === rootRecord.type) throw rootRecord.arg; return this.rval; }, dispatchException: function dispatchException(exception) { if (this.done) throw exception; var context = this; function handle(loc, caught) { return record.type = "throw", record.arg = exception, context.next = loc, caught && (context.method = "next", context.arg = undefined), !!caught; } for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i], record = entry.completion; if ("root" === entry.tryLoc) return handle("end"); if (entry.tryLoc <= this.prev) { var hasCatch = hasOwn.call(entry, "catchLoc"), hasFinally = hasOwn.call(entry, "finallyLoc"); if (hasCatch && hasFinally) { if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0); if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc); } else if (hasCatch) { if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0); } else { if (!hasFinally) throw new Error("try statement without catch or finally"); if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc); } } } }, abrupt: function abrupt(type, arg) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.tryLoc <= this.prev && hasOwn.call(entry, "finallyLoc") && this.prev < entry.finallyLoc) { var finallyEntry = entry; break; } } finallyEntry && ("break" === type || "continue" === type) && finallyEntry.tryLoc <= arg && arg <= finallyEntry.finallyLoc && (finallyEntry = null); var record = finallyEntry ? finallyEntry.completion : {}; return record.type = type, record.arg = arg, finallyEntry ? (this.method = "next", this.next = finallyEntry.finallyLoc, ContinueSentinel) : this.complete(record); }, complete: function complete(record, afterLoc) { if ("throw" === record.type) throw record.arg; return "break" === record.type || "continue" === record.type ? this.next = record.arg : "return" === record.type ? (this.rval = this.arg = record.arg, this.method = "return", this.next = "end") : "normal" === record.type && afterLoc && (this.next = afterLoc), ContinueSentinel; }, finish: function finish(finallyLoc) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.finallyLoc === finallyLoc) return this.complete(entry.completion, entry.afterLoc), resetTryEntry(entry), ContinueSentinel; } }, catch: function _catch(tryLoc) { for (var i = this.tryEntries.length - 1; i >= 0; --i) { var entry = this.tryEntries[i]; if (entry.tryLoc === tryLoc) { var record = entry.completion; if ("throw" === record.type) { var thrown = record.arg; resetTryEntry(entry); } return thrown; } } throw new Error("illegal catch attempt"); }, delegateYield: function delegateYield(iterable, resultName, nextLoc) { return this.delegate = { iterator: values(iterable), resultName: resultName, nextLoc: nextLoc }, "next" === this.method && (this.arg = undefined), ContinueSentinel; } }, exports; }
-
-function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
-
-function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
 function _slicedToArray(arr, i) { return _arrayWithHoles(arr) || _iterableToArrayLimit(arr, i) || _unsupportedIterableToArray(arr, i) || _nonIterableRest(); }
 
@@ -40643,6 +40815,10 @@ function _arrayLikeToArray(arr, len) { if (len == null || len > arr.length) len 
 function _iterableToArrayLimit(arr, i) { var _i = null == arr ? null : "undefined" != typeof Symbol && arr[Symbol.iterator] || arr["@@iterator"]; if (null != _i) { var _s, _e, _x, _r, _arr = [], _n = !0, _d = !1; try { if (_x = (_i = _i.call(arr)).next, 0 === i) { if (Object(_i) !== _i) return; _n = !1; } else for (; !(_n = (_s = _x.call(_i)).done) && (_arr.push(_s.value), _arr.length !== i); _n = !0); } catch (err) { _d = !0, _e = err; } finally { try { if (!_n && null != _i.return && (_r = _i.return(), Object(_r) !== _r)) return; } finally { if (_d) throw _e; } } return _arr; } }
 
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
+
+function asyncGeneratorStep(gen, resolve, reject, _next, _throw, key, arg) { try { var info = gen[key](arg); var value = info.value; } catch (error) { reject(error); return; } if (info.done) { resolve(value); } else { Promise.resolve(value).then(_next, _throw); } }
+
+function _asyncToGenerator(fn) { return function () { var self = this, args = arguments; return new Promise(function (resolve, reject) { var gen = fn.apply(self, args); function _next(value) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "next", value); } function _throw(err) { asyncGeneratorStep(gen, resolve, reject, _next, _throw, "throw", err); } _next(undefined); }); }; }
 
 function App() {
   var dispatch = (0, _reactRedux.useDispatch)(); // この関数は state が変化するたび呼び出され、
@@ -40662,14 +40838,30 @@ function App() {
     });
   };
 
-  var _useState = (0, _react.useState)({
-    cardsOrder: {}
-  }),
-      _useState2 = _slicedToArray(_useState, 2),
-      _useState2$ = _useState2[0],
-      columns = _useState2$.columns,
-      cardsOrder = _useState2$.cardsOrder,
-      setData = _useState2[1];
+  var columns = (0, _reactRedux.useSelector)(function (state) {
+    return state.columns;
+  });
+  var cardsOrder = (0, _reactRedux.useSelector)(function (state) {
+    return state.cardsOrder;
+  });
+  var cardIsBeingDeleted = (0, _reactRedux.useSelector)(function (state) {
+    return Boolean(state.deletingCardID);
+  });
+
+  var setDeletingCardID = function setDeletingCardID(cardID) {
+    return dispatch({
+      type: 'Card.SetDeletingCard',
+      payload: {
+        cardID: cardID
+      }
+    });
+  };
+
+  var cancelDelete = function cancelDelete() {
+    return dispatch({
+      type: 'Dialog.CancelDelete'
+    });
+  };
 
   (0, _react.useEffect)(function () {
     ;
@@ -40687,9 +40879,12 @@ function App() {
 
           case 2:
             columns = _context.sent;
-            setData((0, _immer.default)(function (draft) {
-              draft.columns = columns;
-            }));
+            dispatch({
+              type: 'App.SetColumns',
+              payload: {
+                columns: columns
+              }
+            });
             _context.next = 6;
             return Promise.all([(0, _api.api)('GET /v1/cards', null), (0, _api.api)('GET /v1/cardsOrder', null)]);
 
@@ -40698,15 +40893,13 @@ function App() {
             _ref3 = _slicedToArray(_ref2, 2);
             unorderedCards = _ref3[0];
             cardsOrder = _ref3[1];
-            setData((0, _immer.default)(function (draft) {
-              var _a;
-
-              draft.cardsOrder = cardsOrder;
-              (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.forEach(function (column) {
-                // 第三引数にcolumn.idを指定することで、特定の列に適用されるカードの順序を制御し、正しい並び替えを行うことができる。
-                column.cards = (0, _util.sortBy)(unorderedCards, cardsOrder, column.id);
-              });
-            }));
+            dispatch({
+              type: 'App.SetCards',
+              payload: {
+                cards: unorderedCards,
+                cardsOrder: cardsOrder
+              }
+            });
 
           case 11:
           case "end":
@@ -40714,47 +40907,42 @@ function App() {
         }
       }, _callee);
     }))();
-  }, []);
+  }, [dispatch]);
+  var draggingCardID = (0, _reactRedux.useSelector)(function (state) {
+    return state.draggingCardID;
+  });
 
-  var _useState3 = (0, _react.useState)(undefined),
-      _useState4 = _slicedToArray(_useState3, 2),
-      draggingCardID = _useState4[0],
-      setDraggingCardID = _useState4[1];
+  var setDraggingCardID = function setDraggingCardID(cardID) {
+    return dispatch({
+      type: 'Card.StartDragging',
+      payload: {
+        cardID: cardID
+      }
+    });
+  };
 
   var dropCardTo = function dropCardTo(toID) {
     var fromID = draggingCardID;
     if (!fromID) return;
-    setDraggingCardID(undefined);
     if (fromID === toID) return;
     var patch = (0, _util.reorderPatch)(cardsOrder, fromID, toID);
-    setData((0, _immer.default)(function (draft) {
-      var _a, _b, _c;
-
-      var card = draft.columns; // 現在のcardsOrderとpatchをマージして、新しいcardsOrderを生成している。
-
-      draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), patch);
-      var unorderedCards = (_b = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.flatMap(function (c) {
-        var _a;
-
-        return (_a = c.cards) !== null && _a !== void 0 ? _a : [];
-      })) !== null && _b !== void 0 ? _b : [];
-      (_c = draft.columns) === null || _c === void 0 ? void 0 : _c.forEach(function (column) {
-        column.cards = (0, _util.sortBy)(unorderedCards, draft.cardsOrder, column.id);
-      });
-    }));
+    dispatch({
+      type: 'Card.Drop',
+      payload: {
+        toID: toID
+      }
+    });
     (0, _api.api)('PATCH /v1/cardsOrder', patch);
   };
 
   var setText = function setText(columnID, value) {
-    setData((0, _immer.default)(function (draft) {
-      var _a;
-
-      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
-        return c.id === columnID;
-      });
-      if (!column) return;
-      column.text = value;
-    }));
+    dispatch({
+      type: 'InputForm.SetText',
+      payload: {
+        columnID: columnID,
+        value: value
+      }
+    });
   };
 
   var addCard = function addCard(columnID) {
@@ -40765,55 +40953,16 @@ function App() {
     var text = column.text;
     var cardID = (0, _util.randomID)();
     var patch = (0, _util.reorderPatch)(cardsOrder, cardID, cardsOrder[columnID]);
-    setData((0, _immer.default)(function (draft) {
-      var _a;
-
-      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
-        return c.id === columnID;
-      });
-      if (!(column === null || column === void 0 ? void 0 : column.cards)) return;
-      column.cards.unshift({
-        id: cardID,
-        text: column.text
-      });
-      column.text = '';
-      draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), patch);
-    }));
+    dispatch({
+      type: 'InputForm.ConfirmInput',
+      payload: {
+        columnID: columnID,
+        cardID: cardID
+      }
+    });
     (0, _api.api)('POST /v1/cards', {
       id: cardID,
       text: text
-    });
-    (0, _api.api)('PATCH /v1/cardsOrder', patch);
-  };
-
-  var _useState5 = (0, _react.useState)(undefined),
-      _useState6 = _slicedToArray(_useState5, 2),
-      deletingCardID = _useState6[0],
-      setDeletingCardID = _useState6[1];
-
-  var deleteCard = function deleteCard() {
-    var cardID = deletingCardID;
-    if (!cardID) return;
-    setDeletingCardID(undefined);
-    var patch = (0, _util.reorderPatch)(cardsOrder, cardID);
-    setData((0, _immer.default)(function (draft) {
-      var _a;
-
-      var column = (_a = draft.columns) === null || _a === void 0 ? void 0 : _a.find(function (col) {
-        var _a;
-
-        return (_a = col.cards) === null || _a === void 0 ? void 0 : _a.some(function (c) {
-          return c.id === cardID;
-        });
-      });
-      if (!(column === null || column === void 0 ? void 0 : column.cards)) return;
-      column.cards = column.cards.filter(function (c) {
-        return c.id !== cardID;
-      });
-      draft.cardsOrder = _objectSpread(_objectSpread({}, draft.cardsOrder), patch);
-    }));
-    (0, _api.api)('DELETE /v1/cards', {
-      id: cardID
     });
     (0, _api.api)('PATCH /v1/cardsOrder', patch);
   };
@@ -40848,16 +40997,9 @@ function App() {
         return addCard(columnID);
       }
     });
-  }))), deletingCardID && _react.default.createElement(Overlay, {
-    onClick: function onClick() {
-      return setDeletingCardID(undefined);
-    }
-  }, _react.default.createElement(_DeleteDialog.DeleteDialog, {
-    onConfirm: deleteCard,
-    onCancel: function onCancel() {
-      return setDeletingCardID(undefined);
-    }
-  })));
+  }))), cardIsBeingDeleted && _react.default.createElement(Overlay, {
+    onClick: cancelDelete
+  }, _react.default.createElement(_DeleteDialog.DeleteDialog, null)));
 }
 
 var Container = _styledComponents.default.div(_templateObject || (_templateObject = _taggedTemplateLiteral(["\n  display: flex;\n  flex-flow: column;\n  height: 100%;\n"])));
@@ -40873,7 +41015,7 @@ var Loading = _styledComponents.default.div.attrs({
 })(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral(["\n  font-size: 14px;\n"])));
 
 var Overlay = (0, _styledComponents.default)(_Overlay2.Overlay)(_templateObject6 || (_templateObject6 = _taggedTemplateLiteral(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n"])));
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","immer":"../node_modules/immer/dist/immer.esm.js","./util":"util.ts","./api":"api.ts","./Header":"Header.tsx","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./util":"util.ts","./api":"api.ts","./Header":"Header.tsx","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
 "use strict";
 
 var _react = _interopRequireDefault(require("react"));
@@ -40927,7 +41069,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "60200" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "52191" + '/');
 
   ws.onmessage = function (event) {
     checkedAssets = {};
