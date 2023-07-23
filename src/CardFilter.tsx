@@ -13,7 +13,7 @@ export function CardFilter({
     return (
         <Container>
             <SearchIcon />
-            <Input 
+            <Input
                 placefolder="Filter cards"
                 value={value}
                 onChange={ev => onChange?.(ev.currentTarget.value)}

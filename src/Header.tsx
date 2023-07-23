@@ -6,11 +6,11 @@ import { CardFilter } from './CardFilter'
 export function Header({
     filterValue,
     onFilterChange,
-    className 
-  }: { 
+    className
+  }: {
     filterValue?: string,
     onFilterChange?(value: string): void,
-    className?: string 
+    className?: string
   }) {
   return (
     <Container className={className}>
