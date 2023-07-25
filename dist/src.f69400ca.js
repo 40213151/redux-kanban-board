@@ -37827,6 +37827,12 @@ var reducer = (0, _immer.default)(function (draft, action) {
         return;
       }
 
+    case 'Card.EndDragging':
+      {
+        draft.draggingCardID = undefined;
+        return;
+      }
+
     case 'Card.Drop':
       {
         var fromID = draft.draggingCardID;
@@ -40116,6 +40122,8 @@ var _react = _interopRequireDefault(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
 
+var _reactRedux = require("react-redux");
+
 var color = _interopRequireWildcard(require("./color"));
 
 var _icon = require("./icon");
@@ -40130,14 +40138,26 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
-function CardFilter(_ref) {
-  var value = _ref.value,
-      _onChange = _ref.onChange;
+function CardFilter() {
+  var dispatch = (0, _reactRedux.useDispatch)();
+  var value = (0, _reactRedux.useSelector)(function (state) {
+    return state.filterValue;
+  });
+
+  var _onChange = function onChange(value) {
+    return dispatch({
+      type: 'Filter.SetFilter',
+      payload: {
+        value: value
+      }
+    });
+  };
+
   return _react.default.createElement(Container, null, _react.default.createElement(SearchIcon, null), _react.default.createElement(Input, {
     placefolder: "Filter cards",
     value: value,
     onChange: function onChange(ev) {
-      return _onChange === null || _onChange === void 0 ? void 0 : _onChange(ev.currentTarget.value);
+      return _onChange(ev.currentTarget.value);
     }
   }));
 }
@@ -40149,7 +40169,7 @@ var SearchIcon = (0, _styledComponents.default)(_icon.SearchIcon)(_templateObjec
 var Input = _styledComponents.default.input.attrs({
   type: 'search'
 })(_templateObject3 || (_templateObject3 = _taggedTemplateLiteral(["\n  width: 100%;\n  padding: 6px 8px 6px 0;\n  color: ", ";\n  font-size: 14px;\n\n  :focus {\n    outline: none;\n  }\n"])), color.White);
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.ts","./icon":"icon.tsx"}],"Header.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./color":"color.ts","./icon":"icon.tsx"}],"Header.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40176,15 +40196,10 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 function Header(_ref) {
-  var filterValue = _ref.filterValue,
-      onFilterChange = _ref.onFilterChange,
-      className = _ref.className;
+  var className = _ref.className;
   return _react.default.createElement(Container, {
     className: className
-  }, _react.default.createElement(Logo, null, "Kanban board"), _react.default.createElement(_CardFilter.CardFilter, {
-    value: filterValue,
-    onChange: onFilterChange
-  }));
+  }, _react.default.createElement(Logo, null, "Kanban board"), _react.default.createElement(_CardFilter.CardFilter, null));
 }
 
 var Container = _styledComponents.default.div(_templateObject || (_templateObject = _taggedTemplateLiteral(["\n  display: flex;\n  align-items: center;\n  justify-content: space-between;\n  padding: 8px 16px;\n  background-color: ", ";\n"])), color.Navy);
@@ -40201,6 +40216,12 @@ exports.Card = Card;
 var _react = _interopRequireWildcard(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
+
+var _reactRedux = require("react-redux");
+
+var _util = require("./util");
+
+var _api = require("./api");
 
 var color = _interopRequireWildcard(require("./color"));
 
@@ -40231,27 +40252,53 @@ function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 Card.DropArea = DropArea;
 
 function Card(_ref) {
-  var text = _ref.text,
-      _onDragStart = _ref.onDragStart,
-      _onDragEnd = _ref.onDragEnd,
-      onDeleteClick = _ref.onDeleteClick;
+  var id = _ref.id;
+  var dispatch = (0, _reactRedux.useDispatch)();
+  var card = (0, _reactRedux.useSelector)(function (state) {
+    var _a;
 
-  var _useState = (0, _react.useState)(false),
-      _useState2 = _slicedToArray(_useState, 2),
-      drag = _useState2[0],
-      setDrag = _useState2[1];
+    return (_a = state.columns) === null || _a === void 0 ? void 0 : _a.flatMap(function (c) {
+      var _a;
 
+      return (_a = c.cards) !== null && _a !== void 0 ? _a : [];
+    }).find(function (c) {
+      return c.id === id;
+    });
+  });
+  var drag = (0, _reactRedux.useSelector)(function (state) {
+    return state.draggingCardID === id;
+  });
+
+  var onDeleteClick = function onDeleteClick() {
+    return dispatch({
+      type: 'Card.SetDeletingCard',
+      payload: {
+        cardID: id
+      }
+    });
+  };
+
+  if (!card) {
+    return null;
+  }
+
+  var text = card.text;
   return _react.default.createElement(Container, {
     style: {
       opacity: drag ? 0.5 : undefined
     },
     onDragStart: function onDragStart() {
-      _onDragStart === null || _onDragStart === void 0 ? void 0 : _onDragStart();
-      setDrag(true);
+      dispatch({
+        type: 'Card.StartDragging',
+        payload: {
+          cardID: id
+        }
+      });
     },
     onDragEnd: function onDragEnd() {
-      _onDragEnd === null || _onDragEnd === void 0 ? void 0 : _onDragEnd();
-      setDrag(false);
+      dispatch({
+        type: 'Card.EndDragging'
+      });
     }
   }, _react.default.createElement(CheckIcon, null), text === null || text === void 0 ? void 0 : text.split(/(https?:\/\/\S+)/g).map(function (fragment, i) {
     return i % 2 === 0 ? _react.default.createElement(Text, {
@@ -40266,16 +40313,23 @@ function Card(_ref) {
 }
 
 function DropArea(_ref2) {
-  var disabled = _ref2.disabled,
-      _onDrop = _ref2.onDrop,
+  var toID = _ref2.targetID,
+      disabled = _ref2.disabled,
       children = _ref2.children,
       className = _ref2.className,
       style = _ref2.style;
+  var dispatch = (0, _reactRedux.useDispatch)();
+  var draggingCardID = (0, _reactRedux.useSelector)(function (state) {
+    return state.draggingCardID;
+  });
+  var cardsOrder = (0, _reactRedux.useSelector)(function (state) {
+    return state.cardsOrder;
+  });
 
-  var _useState3 = (0, _react.useState)(false),
-      _useState4 = _slicedToArray(_useState3, 2),
-      isTarget = _useState4[0],
-      setIsTarget = _useState4[1];
+  var _useState = (0, _react.useState)(false),
+      _useState2 = _slicedToArray(_useState, 2),
+      isTarget = _useState2[0],
+      setIsTarget = _useState2[1];
 
   var visible = !disabled && isTarget;
 
@@ -40301,8 +40355,16 @@ function DropArea(_ref2) {
     },
     onDrop: function onDrop() {
       if (disabled) return;
+      if (!draggingCardID || draggingCardID === toID) return;
+      dispatch({
+        type: 'Card.Drop',
+        payload: {
+          toID: toID
+        }
+      });
+      var patch = (0, _util.reorderPatch)(cardsOrder, draggingCardID, toID);
+      (0, _api.api)('PATCH /v1/cardsOrder', patch);
       setIsTarget(false);
-      _onDrop === null || _onDrop === void 0 ? void 0 : _onDrop();
     }
   }, _react.default.createElement(DropAreaIndicator, {
     style: {
@@ -40359,7 +40421,7 @@ var Link = _styledComponents.default.a.attrs({
   target: '_blank',
   rel: 'noopener noreferrer'
 })(_templateObject7 || (_templateObject7 = _taggedTemplateLiteral(["\n  color: ", ";\n  font-size: 14px;\n  line-height: 1.7;\n  white-space: pre-wrap;\n"])), color.Blue);
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.ts","./icon":"icon.tsx"}],"Button.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./util":"util.ts","./api":"api.ts","./color":"color.ts","./icon":"icon.tsx"}],"Button.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40402,6 +40464,12 @@ var _react = _interopRequireWildcard(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
 
+var _reactRedux = require("react-redux");
+
+var _util = require("./util");
+
+var _api = require("./api");
+
 var color = _interopRequireWildcard(require("./color"));
 
 var _Button = require("./Button");
@@ -40417,16 +40485,50 @@ function _interopRequireWildcard(obj, nodeInterop) { if (!nodeInterop && obj && 
 function _taggedTemplateLiteral(strings, raw) { if (!raw) { raw = strings.slice(0); } return Object.freeze(Object.defineProperties(strings, { raw: { value: Object.freeze(raw) } })); }
 
 function InputForm(_ref) {
-  var value = _ref.value,
-      _onChange = _ref.onChange,
-      onConfirm = _ref.onConfirm,
+  var columnID = _ref.columnID,
       onCancel = _ref.onCancel,
       className = _ref.className;
+  var dispatch = (0, _reactRedux.useDispatch)();
+  var value = (0, _reactRedux.useSelector)(function (state) {
+    var _a, _b;
+
+    return (_b = (_a = state.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
+      return c.id === columnID;
+    })) === null || _b === void 0 ? void 0 : _b.text;
+  });
+  var cardsOrder = (0, _reactRedux.useSelector)(function (state) {
+    return state.cardsOrder;
+  });
+
+  var _onChange = function onChange(value) {
+    return dispatch({
+      type: 'InputForm.SetText',
+      payload: {
+        columnID: columnID,
+        value: value
+      }
+    });
+  };
+
   var disabled = !(value === null || value === void 0 ? void 0 : value.trim());
 
   var handleConfirm = function handleConfirm() {
     if (disabled) return;
-    onConfirm === null || onConfirm === void 0 ? void 0 : onConfirm();
+    var text = value;
+    var cardID = (0, _util.randomID)();
+    var patch = (0, _util.reorderPatch)(cardsOrder, cardID, cardsOrder[columnID]);
+    dispatch({
+      type: 'InputForm.ConfirmInput',
+      payload: {
+        columnID: columnID,
+        cardID: cardID
+      }
+    });
+    (0, _api.api)('POST /v1/cards', {
+      id: cardID,
+      text: text
+    });
+    (0, _api.api)('PATCH /v1/cardsOrder', patch);
   };
 
   var ref = useAutoFitToVontentHeight(value);
@@ -40438,7 +40540,7 @@ function InputForm(_ref) {
     placeholder: "Enter a note",
     value: value,
     onChange: function onChange(ev) {
-      return _onChange === null || _onChange === void 0 ? void 0 : _onChange(ev.currentTarget.value);
+      return _onChange(ev.currentTarget.value);
     },
     onKeyDown: function onKeyDown(ev) {
       if (!((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter')) return;
@@ -40489,7 +40591,7 @@ var AddButton = (0, _styledComponents.default)(_Button.ConfirmButton).attrs({
 var CancelButton = (0, _styledComponents.default)(_Button.Button).attrs({
   children: 'Cancel'
 })(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral([""])));
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.ts","./Button":"Button.tsx"}],"Column.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./util":"util.ts","./api":"api.ts","./color":"color.ts","./Button":"Button.tsx"}],"Column.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40500,6 +40602,8 @@ exports.Column = Column;
 var _react = _interopRequireWildcard(require("react"));
 
 var _styledComponents = _interopRequireDefault(require("styled-components"));
+
+var _reactRedux = require("react-redux");
 
 var color = _interopRequireWildcard(require("./color"));
 
@@ -40532,28 +40636,41 @@ function _iterableToArrayLimit(arr, i) { var _i = null == arr ? null : "undefine
 function _arrayWithHoles(arr) { if (Array.isArray(arr)) return arr; }
 
 function Column(_ref) {
-  var title = _ref.title,
-      rawFilterValue = _ref.filterValue,
-      rawCards = _ref.cards,
-      onCardDragStart = _ref.onCardDragStart,
-      onCardDrop = _ref.onCardDrop,
-      onCardDeleteClick = _ref.onCardDeleteClick,
-      text = _ref.text,
-      onTextChange = _ref.onTextChange,
-      onTextConfirm = _ref.onTextConfirm,
-      onTextCancel = _ref.onTextCancel;
+  var columnID = _ref.id;
 
-  var _a, _b, _c;
+  var _a;
 
-  var filterValue = rawFilterValue === null || rawFilterValue === void 0 ? void 0 : rawFilterValue.trim();
-  var keywords = (_a = filterValue === null || filterValue === void 0 ? void 0 : filterValue.toLowerCase().split(/\s+/g)) !== null && _a !== void 0 ? _a : [];
-  var cards = rawCards === null || rawCards === void 0 ? void 0 : rawCards.filter(function (_ref2) {
-    var text = _ref2.text;
-    return keywords === null || keywords === void 0 ? void 0 : keywords.every(function (w) {
-      return text === null || text === void 0 ? void 0 : text.toLowerCase().includes(w);
+  var _useSelector = (0, _reactRedux.useSelector)(function (state) {
+    var _a, _b, _c, _d;
+
+    var filterValue = state.filterValue.trim();
+    var filtered = Boolean(filterValue);
+    var keywords = filterValue.toLowerCase().split(/\s+/g);
+    var column = (_a = state.columns) === null || _a === void 0 ? void 0 : _a.find(function (c) {
+      return c.id === columnID;
     });
+    var cards = (_b = column === null || column === void 0 ? void 0 : column.cards) === null || _b === void 0 ? void 0 : _b.filter(function (_ref2) {
+      var text = _ref2.text;
+      return keywords.every(function (w) {
+        return text === null || text === void 0 ? void 0 : text.toLowerCase().includes(w);
+      });
+    });
+    var totalCount = (_d = (_c = column === null || column === void 0 ? void 0 : column.cards) === null || _c === void 0 ? void 0 : _c.length) !== null && _d !== void 0 ? _d : -1;
+    return {
+      column: column,
+      cards: cards,
+      filtered: filtered,
+      totalCount: totalCount
+    };
+  }),
+      column = _useSelector.column,
+      cards = _useSelector.cards,
+      filtered = _useSelector.filtered,
+      totalCount = _useSelector.totalCount;
+
+  var draggingCardID = (0, _reactRedux.useSelector)(function (state) {
+    return state.draggingCardID;
   });
-  var totalCount = (_b = rawCards === null || rawCards === void 0 ? void 0 : rawCards.length) !== null && _b !== void 0 ? _b : -1;
 
   var _useState = (0, _react.useState)(false),
       _useState2 = _slicedToArray(_useState, 2),
@@ -40566,64 +40683,38 @@ function Column(_ref) {
     });
   };
 
-  var confirmInput = function confirmInput() {
-    onTextConfirm === null || onTextConfirm === void 0 ? void 0 : onTextConfirm();
-  };
-
   var cancelInput = function cancelInput() {
-    setInputMode(false);
-    onTextCancel === null || onTextCancel === void 0 ? void 0 : onTextCancel();
+    return setInputMode(false);
   };
 
-  var _useState3 = (0, _react.useState)(undefined),
-      _useState4 = _slicedToArray(_useState3, 2),
-      draggingCardID = _useState4[0],
-      setDraggingCardID = _useState4[1];
+  if (!column) {
+    return null;
+  }
 
-  var handleCardDragStart = function handleCardDragStart(id) {
-    setDraggingCardID(id);
-    onCardDragStart === null || onCardDragStart === void 0 ? void 0 : onCardDragStart(id);
-  };
-
+  var title = column.title;
   return _react.default.createElement(Container, null, _react.default.createElement(Header, null, _react.default.createElement(CountBadge, null, totalCount), _react.default.createElement(ColumnName, null, title), _react.default.createElement(AddButton, {
     onClick: toggleInput
   })), inputMode && _react.default.createElement(InputForm, {
-    value: text,
-    onChange: onTextChange,
-    onConfirm: confirmInput,
+    columnID: columnID,
     onCancel: cancelInput
-  }), !cards ? _react.default.createElement("loading", null) : _react.default.createElement(_react.default.Fragment, null, filterValue && _react.default.createElement(ResultCount, null, cards.length, " results"), _react.default.createElement(VerticalScroll, null, cards.map(function (_ref3, i) {
-    var id = _ref3.id,
-        text = _ref3.text;
+  }), !cards ? _react.default.createElement("loading", null) : _react.default.createElement(_react.default.Fragment, null, filtered && _react.default.createElement(ResultCount, null, cards.length, " results"), _react.default.createElement(VerticalScroll, null, cards.map(function (_ref3, i) {
+    var id = _ref3.id;
 
     var _a;
 
     return _react.default.createElement(_Card.Card.DropArea, {
       key: id,
-      disabled: draggingCardID !== undefined && (id === draggingCardID || ((_a = cards[i - 1]) === null || _a === void 0 ? void 0 : _a.id) === draggingCardID),
-      onDrop: function onDrop() {
-        return onCardDrop === null || onCardDrop === void 0 ? void 0 : onCardDrop(id);
-      }
+      targetID: id,
+      disabled: draggingCardID !== undefined && (id === draggingCardID || ((_a = cards[i - 1]) === null || _a === void 0 ? void 0 : _a.id) === draggingCardID)
     }, _react.default.createElement(_Card.Card, {
-      text: text,
-      onDragStart: function onDragStart() {
-        return handleCardDragStart(id);
-      },
-      onDragEnd: function onDragEnd() {
-        return setDraggingCardID(undefined);
-      },
-      onDeleteClick: function onDeleteClick() {
-        return onCardDeleteClick === null || onCardDeleteClick === void 0 ? void 0 : onCardDeleteClick(id);
-      }
+      id: id
     }));
   }), _react.default.createElement(_Card.Card.DropArea, {
+    targetID: columnID,
     style: {
       height: '100%'
     },
-    disabled: draggingCardID !== undefined && ((_c = cards[cards.length - 1]) === null || _c === void 0 ? void 0 : _c.id) === draggingCardID,
-    onDrop: function onDrop() {
-      return onCardDrop === null || onCardDrop === void 0 ? void 0 : onCardDrop(null);
-    }
+    disabled: draggingCardID !== undefined && ((_a = cards[cards.length - 1]) === null || _a === void 0 ? void 0 : _a.id) === draggingCardID
   }))));
 }
 
@@ -40649,7 +40740,7 @@ var Loading = _styledComponents.default.div.attrs({
 var ResultCount = _styledComponents.default.div(_templateObject8 || (_templateObject8 = _taggedTemplateLiteral(["\n  color: ", ";\n  font-size: 12px;\n  text-align: center;\n"])), color.Black);
 
 var VerticalScroll = _styledComponents.default.div(_templateObject9 || (_templateObject9 = _taggedTemplateLiteral(["\n  height: 100%;\n  padding: 8px;\n  overflow-y: auto;\n  flex: 1 1 auto;\n\n  > :not(:first-child) {\n    margin-top: 8px;\n  }\n"])));
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","./color":"color.ts","./Card":"Card.tsx","./icon":"icon.tsx","./InputForm":"InputForm.tsx"}],"DeleteDialog.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./color":"color.ts","./Card":"Card.tsx","./icon":"icon.tsx","./InputForm":"InputForm.tsx"}],"DeleteDialog.tsx":[function(require,module,exports) {
 "use strict";
 
 Object.defineProperty(exports, "__esModule", {
@@ -40778,8 +40869,6 @@ var _styledComponents = _interopRequireDefault(require("styled-components"));
 
 var _reactRedux = require("react-redux");
 
-var _util = require("./util");
-
 var _api = require("./api");
 
 var _Header2 = require("./Header");
@@ -40825,37 +40914,12 @@ function App() {
   // 選択した値（ここでは filterValue）が変化していればコンポーネントが再レンダリングされる。
   // 余計なレンダリングを抑えるために必要最低限の値を選ぶようにしよう。
 
-  var filterValue = (0, _reactRedux.useSelector)(function (state) {
-    return state.filterValue;
-  });
-
-  var setFilterValue = function setFilterValue(value) {
-    return dispatch({
-      type: 'Filter.SetFilter',
-      payload: {
-        value: value
-      }
-    });
-  };
-
   var columns = (0, _reactRedux.useSelector)(function (state) {
     return state.columns;
-  });
-  var cardsOrder = (0, _reactRedux.useSelector)(function (state) {
-    return state.cardsOrder;
   });
   var cardIsBeingDeleted = (0, _reactRedux.useSelector)(function (state) {
     return Boolean(state.deletingCardID);
   });
-
-  var setDeletingCardID = function setDeletingCardID(cardID) {
-    return dispatch({
-      type: 'Card.SetDeletingCard',
-      payload: {
-        cardID: cardID
-      }
-    });
-  };
 
   var cancelDelete = function cancelDelete() {
     return dispatch({
@@ -40908,94 +40972,11 @@ function App() {
       }, _callee);
     }))();
   }, [dispatch]);
-  var draggingCardID = (0, _reactRedux.useSelector)(function (state) {
-    return state.draggingCardID;
-  });
-
-  var setDraggingCardID = function setDraggingCardID(cardID) {
-    return dispatch({
-      type: 'Card.StartDragging',
-      payload: {
-        cardID: cardID
-      }
-    });
-  };
-
-  var dropCardTo = function dropCardTo(toID) {
-    var fromID = draggingCardID;
-    if (!fromID) return;
-    if (fromID === toID) return;
-    var patch = (0, _util.reorderPatch)(cardsOrder, fromID, toID);
-    dispatch({
-      type: 'Card.Drop',
-      payload: {
-        toID: toID
-      }
-    });
-    (0, _api.api)('PATCH /v1/cardsOrder', patch);
-  };
-
-  var setText = function setText(columnID, value) {
-    dispatch({
-      type: 'InputForm.SetText',
-      payload: {
-        columnID: columnID,
-        value: value
-      }
-    });
-  };
-
-  var addCard = function addCard(columnID) {
-    var column = columns === null || columns === void 0 ? void 0 : columns.find(function (c) {
-      return c.id === columnID;
-    });
-    if (!column) return;
-    var text = column.text;
-    var cardID = (0, _util.randomID)();
-    var patch = (0, _util.reorderPatch)(cardsOrder, cardID, cardsOrder[columnID]);
-    dispatch({
-      type: 'InputForm.ConfirmInput',
-      payload: {
-        columnID: columnID,
-        cardID: cardID
-      }
-    });
-    (0, _api.api)('POST /v1/cards', {
-      id: cardID,
-      text: text
-    });
-    (0, _api.api)('PATCH /v1/cardsOrder', patch);
-  };
-
-  return _react.default.createElement(Container, null, _react.default.createElement(Header, {
-    filterValue: filterValue,
-    onFilterChange: setFilterValue
-  }), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, !columns ? _react.default.createElement(Loading, null) : columns.map(function (_ref4) {
-    var columnID = _ref4.id,
-        title = _ref4.title,
-        cards = _ref4.cards,
-        text = _ref4.text;
+  return _react.default.createElement(Container, null, _react.default.createElement(Header, null), _react.default.createElement(MainArea, null, _react.default.createElement(HorizontalScroll, null, !columns ? _react.default.createElement(Loading, null) : columns.map(function (_ref4) {
+    var id = _ref4.id;
     return _react.default.createElement(_Column.Column, {
-      key: columnID,
-      title: title,
-      filterValue: filterValue,
-      cards: cards,
-      onCardDragStart: function onCardDragStart(cardID) {
-        return setDraggingCardID(cardID);
-      },
-      onCardDrop: function onCardDrop(entered) {
-        return dropCardTo(entered !== null && entered !== void 0 ? entered : columnID);
-      },
-      onCardDeleteClick: function onCardDeleteClick(cardID) {
-        return setDeletingCardID(cardID);
-      },
-      text: text,
-      onTextChange: function onTextChange(value) {
-        return setText(columnID, value);
-      },
-      onTextConfirm: function onTextConfirm() {
-        return addCard(columnID);
-      }
+      key: id,
+      id: id
     });
   }))), cardIsBeingDeleted && _react.default.createElement(Overlay, {
     onClick: cancelDelete
@@ -41015,7 +40996,7 @@ var Loading = _styledComponents.default.div.attrs({
 })(_templateObject5 || (_templateObject5 = _taggedTemplateLiteral(["\n  font-size: 14px;\n"])));
 
 var Overlay = (0, _styledComponents.default)(_Overlay2.Overlay)(_templateObject6 || (_templateObject6 = _taggedTemplateLiteral(["\n  display: flex;\n  justify-content: center;\n  align-items: center;\n"])));
-},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./util":"util.ts","./api":"api.ts","./Header":"Header.tsx","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
+},{"react":"../node_modules/react/index.js","styled-components":"../node_modules/styled-components/dist/styled-components.browser.esm.js","react-redux":"../node_modules/react-redux/es/index.js","./api":"api.ts","./Header":"Header.tsx","./Column":"Column.tsx","./DeleteDialog":"DeleteDialog.tsx","./Overlay":"Overlay.tsx"}],"index.tsx":[function(require,module,exports) {
 "use strict";
 
 var _react = _interopRequireDefault(require("react"));

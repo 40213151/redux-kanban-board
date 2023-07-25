@@ -69,6 +69,9 @@ export type Action =
         cardID: CardID
       }
     }
+    | {
+      type: 'Card.EndDragging'
+    }
   | {
       type: 'Card.Drop'
       payload: {
@@ -155,6 +158,11 @@ export const reducer: Reducer<
         const { cardID } = action.payload
 
         draft.draggingCardID = cardID
+        return
+      }
+
+      case 'Card.EndDragging': {
+        draft.draggingCardID = undefined
         return
       }
 

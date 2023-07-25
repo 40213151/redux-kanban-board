@@ -1,8 +1,7 @@
 import React, { useEffect } from 'react'
 import styled from 'styled-components'
 import { useDispatch, useSelector } from 'react-redux'
-import { randomID, reorderPatch } from './util'
-import { api, ColumnID, CardID } from './api'
+import { api } from './api'
 import { Header as _Header } from './Header'
 import { Column } from './Column'
 import { DeleteDialog } from './DeleteDialog'
@@ -13,26 +12,10 @@ export function App() {
   // この関数は state が変化するたび呼び出され、
   // 選択した値（ここでは filterValue）が変化していればコンポーネントが再レンダリングされる。
   // 余計なレンダリングを抑えるために必要最低限の値を選ぶようにしよう。
-  const filterValue = useSelector(state => state.filterValue)
-  const setFilterValue = (value: string) =>
-  dispatch({
-    type: 'Filter.SetFilter',
-    payload: {
-      value,
-    },
-  })
 
   const columns = useSelector(state => state.columns)
-  const cardsOrder = useSelector(state => state.cardsOrder)
 
   const cardIsBeingDeleted = useSelector(state => Boolean(state.deletingCardID))
-  const setDeletingCardID = (cardID: CardID) =>
-    dispatch({
-      type: 'Card.SetDeletingCard',
-      payload: {
-        cardID,
-      },
-    })
   const cancelDelete = () =>
     dispatch({
       type: 'Dialog.CancelDelete',
@@ -65,90 +48,16 @@ export function App() {
     })()
   }, [dispatch])
 
-  const draggingCardID = useSelector(state => state.draggingCardID)
-  const setDraggingCardID = (cardID: CardID) =>
-    dispatch({
-      type: 'Card.StartDragging',
-      payload: {
-        cardID,
-      },
-    })
-
-  const dropCardTo = (toID: CardID | ColumnID) => {
-    const fromID = draggingCardID
-    if (!fromID) return
-
-    if (fromID === toID) return
-
-    const patch = reorderPatch(cardsOrder, fromID, toID)
-
-    dispatch({
-      type: 'Card.Drop',
-      payload: {
-        toID,
-      },
-    })
-
-    api('PATCH /v1/cardsOrder', patch)
-  }
-
-  const setText = (columnID: ColumnID, value: string) => {
-    dispatch({
-      type: 'InputForm.SetText',
-      payload: {
-        columnID,
-        value
-      }
-    })
-   }
-
-   const addCard = (columnID: ColumnID) => {
-    const column = columns?.find(c => c.id === columnID)
-    if (!column) return
-
-    const text = column.text
-    const cardID = randomID() as CardID
-
-    const patch = reorderPatch(cardsOrder, cardID, cardsOrder[columnID])
-
-    dispatch({
-      type: 'InputForm.ConfirmInput',
-      payload: {
-        columnID,
-        cardID,
-      },
-    })
-
-    api('POST /v1/cards', {
-      id: cardID,
-      text,
-    })
-    api('PATCH /v1/cardsOrder', patch)
-  }
-
   return (
     <Container>
-      <Header filterValue={filterValue} onFilterChange={setFilterValue}/>
+      <Header />
 
       <MainArea>
         <HorizontalScroll>
         {!columns ? (
              <Loading />
            ) : (
-          columns.map(({ id: columnID, title, cards, text }) => (
-            <Column
-              key={columnID}
-              title={title}
-              filterValue={filterValue}
-              cards={cards}
-              onCardDragStart={cardID => setDraggingCardID(cardID)}
-              onCardDrop={entered => dropCardTo(entered ?? columnID)}
-              onCardDeleteClick={cardID => setDeletingCardID(cardID)}
-              text={text}
-              onTextChange={value => setText(columnID, value)}
-              onTextConfirm={() => addCard(columnID)}
-          />
-          ))
+          columns.map(({ id }) => <Column key={id} id={id} />)
         )}
         </HorizontalScroll>
       </MainArea>

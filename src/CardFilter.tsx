@@ -1,22 +1,26 @@
 import React from 'react'
 import styled from 'styled-components'
+import { useDispatch, useSelector } from 'react-redux'
 import * as color from './color'
 import { SearchIcon as _SearchIcon } from './icon'
 
-export function CardFilter({
-    value,
-    onChange,
-}: {
-    value?: string
-    onChange?(value: string): void
-}) {
+export function CardFilter() {
+    const dispatch = useDispatch()
+    const value = useSelector(state => state.filterValue)
+    const onChange = (value: string) =>
+      dispatch({
+        type: 'Filter.SetFilter',
+        payload: {
+          value,
+        },
+      })
     return (
         <Container>
             <SearchIcon />
             <Input
                 placefolder="Filter cards"
                 value={value}
-                onChange={ev => onChange?.(ev.currentTarget.value)}
+                onChange={ev => onChange(ev.currentTarget.value)}
             />
         </Container>
     )
